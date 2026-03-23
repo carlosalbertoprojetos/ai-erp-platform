@@ -1,0 +1,65 @@
+﻿{
+  "name": "default",
+  "steps": [
+    {
+      "name": "architect",
+      "agent": "architect",
+      "continue_on_error": false,
+      "enabled": true,
+      "retries": 2,
+      "retry_backoff_seconds": 0.5,
+      "timeout_seconds": 30,
+      "config": {}
+    },
+    {
+      "name": "backend",
+      "agent": "backend",
+      "continue_on_error": false,
+      "enabled": true,
+      "retries": 1,
+      "retry_backoff_seconds": 0.25,
+      "timeout_seconds": 30,
+      "config": {}
+    },
+    {
+      "name": "security",
+      "agent": "security",
+      "continue_on_error": false,
+      "enabled": true,
+      "retries": 0,
+      "retry_backoff_seconds": 0.25,
+      "timeout_seconds": 20,
+      "config": {}
+    },
+    {
+      "name": "qa",
+      "agent": "qa",
+      "continue_on_error": false,
+      "enabled": true,
+      "retries": 0,
+      "retry_backoff_seconds": 0.25,
+      "timeout_seconds": 60,
+      "config": {}
+    },
+    {
+      "name": "refactor",
+      "agent": "refactor",
+      "continue_on_error": true,
+      "enabled": true,
+      "retries": 0,
+      "retry_backoff_seconds": 0.25,
+      "timeout_seconds": 20,
+      "config": {}
+    },
+    {
+      "name": "git",
+      "agent": "git",
+      "continue_on_error": true,
+      "enabled": true,
+      "retries": 0,
+      "retry_backoff_seconds": 0.25,
+      "timeout_seconds": 45,
+      "config": {}
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+﻿{
+  "critical_issues": [
+    {
+      "id": "CA-001",
+      "issue": "Generated application use cases depended directly on infrastructure repositories, violating Clean Architecture.",
+      "fix": "Refactored code generation to emit domain repository ports and keep infrastructure wiring inside the presentation/infrastructure boundary."
+    },
+    {
+      "id": "CA-002",
+      "issue": "Technical filesystem scanning logic lived inside the domain layer.",
+      "fix": "Moved security scanning and refactor analysis into infrastructure adapters and reduced domain services to business architecture rules only."
+    },
+    {
+      "id": "CA-003",
+      "issue": "The orchestrator executed steps without timeout or retry controls, making failures non-isolated and unsafe for production workloads.",
+      "fix": "Added step-level retries, backoff, timeout enforcement, missing-agent protection and asynchronous repository persistence."
+    }
+  ],
+  "high_priority": [
+    {
+      "id": "CA-004",
+      "issue": "Blocking subprocess and IO calls inside async agents could stall the event loop.",
+      "fix": "Moved QA, Git, backend file writes and analysis tasks to worker threads via asyncio.to_thread."
+    },
+    {
+      "id": "CA-005",
+      "issue": "File generation was not diff-aware or idempotent.",
+      "fix": "Enhanced the file manager to classify created, updated and unchanged files and avoid rewriting identical content."
+    },
+    {
+      "id": "CA-006",
+      "issue": "LLM handling lacked sanitization, timeouts and resilience under repeated provider failures.",
+      "fix": "Added response sanitization, request timeouts, schema validation retries and a circuit breaker in the structured LLM service."
+    }
+  ],
+  "medium_priority": [
+    {
+      "id": "CA-007",
+      "issue": "Agent registration was assembled ad hoc, making pluggability weaker than required.",
+      "fix": "Introduced an application-level agent registry and explicit ports for agents, pipeline loading and execution persistence."
+    },
+    {
+      "id": "CA-008",
+      "issue": "Per-agent lifecycle logs were emitted but not fully attached to agent results.",
+      "fix": "Centralized log collection inside BaseAgent so lifecycle hooks propagate structured logs consistently."
+    },
+    {
+      "id": "CA-009",
+      "issue": "The API ignored per-request provider selection and retained more process state than necessary.",
+      "fix": "Changed the FastAPI run endpoint to build the orchestrator per request provider, improving statelessness and horizontal scaling readiness."
+    }
+  ]
+}

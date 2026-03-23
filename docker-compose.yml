@@ -1,0 +1,77 @@
+﻿version: "3.9"
+
+services:
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://coreflow:coreflow@postgres:5432/coreflow
+      COREFLOW_API_TOKEN: local-token
+      COREFLOW_LLM_PROVIDER: template
+      COREFLOW_ASYNC_BACKEND: redis
+      REDIS_URL: redis://redis:6379/0
+      COREFLOW_REDIS_QUEUE: coreflow:jobs
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./:/app
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "-m", "apps.worker.main"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://coreflow:coreflow@postgres:5432/coreflow
+      COREFLOW_API_TOKEN: local-token
+      COREFLOW_LLM_PROVIDER: template
+      COREFLOW_ASYNC_BACKEND: redis
+      REDIS_URL: redis://redis:6379/0
+      COREFLOW_REDIS_QUEUE: coreflow:jobs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./:/app
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: coreflow
+      POSTGRES_USER: coreflow
+      POSTGRES_PASSWORD: coreflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U coreflow -d coreflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
