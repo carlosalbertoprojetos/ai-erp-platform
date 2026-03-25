@@ -189,9 +189,14 @@ class AuthSession(BaseModel):
     scope: str = 'platform_admin'
     access_token: str
     expires_at: datetime
+    user_id: str | None = None
+    tenant_id: str | None = None
+    roles: list[str] = Field(default_factory=list)
+    modules: list[str] = Field(default_factory=list)
 
 
 class ControlPlaneSeedSummary(BaseModel):
     tenants_created: int
     users_created: int
     invoices_created: int
+

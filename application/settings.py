@@ -17,6 +17,11 @@ class CoreFlowSettings:
     worker_poll_timeout_seconds: int
     admin_username: str
     admin_password: str
+    admin_email: str
+    admin_name: str
+    seed_tenant_name: str
+    seed_tenant_plan: str
+    seed_tenant_status: str
     auth_secret: str
     auth_token_ttl_seconds: int
     cache_ttl_seconds: int
@@ -32,6 +37,7 @@ class CoreFlowSettings:
 
     @classmethod
     def from_env(cls) -> 'CoreFlowSettings':
+        default_admin_username = os.getenv('COREFLOW_ADMIN_USERNAME', 'admin')
         return cls(
             database_url=os.getenv('DATABASE_URL', 'sqlite:///./.coreflow/coreflow.db'),
             api_token=os.getenv('COREFLOW_API_TOKEN', 'local-token'),
@@ -42,8 +48,13 @@ class CoreFlowSettings:
             redis_url=os.getenv('REDIS_URL', 'redis://localhost:6379/0'),
             redis_queue_name=os.getenv('COREFLOW_REDIS_QUEUE', 'coreflow:jobs'),
             worker_poll_timeout_seconds=int(os.getenv('COREFLOW_WORKER_POLL_TIMEOUT', '5')),
-            admin_username=os.getenv('COREFLOW_ADMIN_USERNAME', 'admin'),
+            admin_username=default_admin_username,
             admin_password=os.getenv('COREFLOW_ADMIN_PASSWORD', 'admin123'),
+            admin_email=os.getenv('COREFLOW_ADMIN_EMAIL', 'admin@plataformaerp.local'),
+            admin_name=os.getenv('COREFLOW_ADMIN_NAME', default_admin_username),
+            seed_tenant_name=os.getenv('COREFLOW_SEED_TENANT_NAME', 'PlataformaERP'),
+            seed_tenant_plan=os.getenv('COREFLOW_SEED_TENANT_PLAN', 'enterprise'),
+            seed_tenant_status=os.getenv('COREFLOW_SEED_TENANT_STATUS', 'active'),
             auth_secret=os.getenv('COREFLOW_AUTH_SECRET', os.getenv('COREFLOW_API_TOKEN', 'local-token')),
             auth_token_ttl_seconds=int(os.getenv('COREFLOW_AUTH_TOKEN_TTL', '28800')),
             cache_ttl_seconds=int(os.getenv('COREFLOW_CACHE_TTL_SECONDS', '15')),

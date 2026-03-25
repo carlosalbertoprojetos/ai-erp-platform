@@ -26,6 +26,7 @@ from domain.control_plane_models import (
     TenantUserRecord,
 )
 from infrastructure.control_plane.repository import ControlPlaneRepository
+from infrastructure.iam.repository import IamRepository
 
 logger = logging.getLogger('coreflow.control_plane')
 write_breaker = CircuitBreaker('control-plane-write', failure_threshold=3, recovery_timeout_seconds=20)
@@ -119,13 +120,14 @@ class SessionEnvelope(BaseModel):
     session: AuthSession | None = None
 
 
-SessionIssuer = Callable[[CoreFlowSettings, str], AuthSession]
+SessionIssuer = Callable[[CoreFlowSettings, Any], AuthSession]
 SessionVerifier = Callable[[str, CoreFlowSettings], AuthSession | None]
 
 
 def build_control_plane_router(
     get_repository: Callable[[], ControlPlaneRepository],
     get_dispatcher: Callable[[], Any],
+    get_iam_repository: Callable[[], IamRepository],
     get_settings: Callable[[], CoreFlowSettings],
     require_api_token: Callable[..., Any],
     issue_access_token: SessionIssuer,
@@ -143,12 +145,14 @@ def build_control_plane_router(
     async def login(payload: LoginRequest, request: Request) -> AuthSession:
         settings = get_settings()
         repository = get_repository()
+        iam_repository = get_iam_repository()
         request_id, trace_id = request_context(request)
-        if payload.username != settings.admin_username or payload.password != settings.admin_password:
+        user = await asyncio.to_thread(iam_repository.authenticate_user, payload.username, payload.password)
+        if user is None:
             await asyncio.to_thread(repository.record_audit_log, payload.username, 'auth.login', 'session', None, None, 'denied', request_id, trace_id, {'reason': 'invalid_credentials'})
             raise HTTPException(status_code=401, detail='Invalid username or password.')
-        session = issue_access_token(settings, payload.username)
-        await asyncio.to_thread(repository.record_audit_log, payload.username, 'auth.login', 'session', None, None, 'success', request_id, trace_id, {})
+        session = issue_access_token(settings, user)
+        await asyncio.to_thread(repository.record_audit_log, user.email, 'auth.login', 'session', user.id, user.tenant_id, 'success', request_id, trace_id, {'roles': user.roles})
         return session
 
     @router.get('/auth/session', response_model=SessionEnvelope)
@@ -265,3 +269,6 @@ def build_control_plane_router(
         return record
 
     return router
+
+
+

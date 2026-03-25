@@ -14,6 +14,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
+from application.auth import decode_jwt, issue_jwt
 from application.cache import TTLCacheStore
 from application.dispatcher import InMemoryExecutionDispatcher, RedisExecutionDispatcher
 from application.resilience import CircuitBreaker, CircuitBreakerOpenError, retry_sync
@@ -22,11 +23,14 @@ from application.settings import CoreFlowSettings
 from application.telemetry import MetricsRegistry
 from application.tracing import TracerAdapter
 from apps.orchestrator.control_plane.router import build_control_plane_router
+from apps.orchestrator.iam.router import build_iam_router
 from apps.orchestrator.orchestrator.registry import build_orchestrator
 from domain.control_plane_models import AuthSession
+from domain.iam_models import UserRecord
 from domain.models import ExecutionContext, ExecutionStatusResponse, ExecutionSummary, RunRequest
 from infrastructure.control_plane.repository import ControlPlaneRepository
 from infrastructure.database.repository import ExecutionRepository
+from infrastructure.iam.repository import IamRepository
 
 configure_structured_logging()
 
@@ -60,7 +64,22 @@ def get_control_plane_repository() -> ControlPlaneRepository:
         cache_ttl_seconds=get_settings().cache_ttl_seconds,
     )
     repository.ensure_schema()
-    repository.seed_defaults()
+    return repository
+
+
+@lru_cache
+def get_iam_repository() -> IamRepository:
+    settings = get_settings()
+    repository = IamRepository(settings.database_url)
+    repository.ensure_schema()
+    repository.seed_defaults(
+        tenant_name=settings.seed_tenant_name,
+        plan=settings.seed_tenant_plan,
+        status=settings.seed_tenant_status,
+        admin_name=settings.admin_name,
+        admin_email=settings.admin_email,
+        admin_password=settings.admin_password,
+    )
     return repository
 
 
@@ -99,44 +118,67 @@ def get_tracer() -> TracerAdapter:
     return TracerAdapter(service_name=settings.tracing_service_name, enabled=settings.tracing_enabled)
 
 
-def build_auth_session(username: str, access_token: str, expires_at_epoch: int) -> AuthSession:
+def build_auth_session(
+    username: str,
+    access_token: str,
+    expires_at_epoch: int,
+    user_id: str | None = None,
+    tenant_id: str | None = None,
+    roles: list[str] | None = None,
+    modules: list[str] | None = None,
+) -> AuthSession:
     from datetime import datetime, timezone
 
     return AuthSession(
         username=username,
         access_token=access_token,
         expires_at=datetime.fromtimestamp(expires_at_epoch, tz=timezone.utc),
+        user_id=user_id,
+        tenant_id=tenant_id,
+        roles=roles or [],
+        modules=modules or [],
+        scope=(roles or ['platform_admin'])[0],
     )
 
 
-def issue_access_token(settings: CoreFlowSettings, username: str) -> AuthSession:
-    expires_at_epoch = int(time.time()) + settings.auth_token_ttl_seconds
-    payload = f'{username}:{expires_at_epoch}'
-    signature = hmac.new(settings.auth_secret.encode('utf-8'), payload.encode('utf-8'), hashlib.sha256).hexdigest()
-    token = base64.urlsafe_b64encode(f'{payload}:{signature}'.encode('utf-8')).decode('utf-8').rstrip('=')
-    return build_auth_session(username, token, expires_at_epoch)
+def issue_access_token(settings: CoreFlowSettings, user: UserRecord) -> AuthSession:
+    token, expires_at = issue_jwt(settings, user)
+    return build_auth_session(
+        username=user.email,
+        access_token=token,
+        expires_at_epoch=int(expires_at.timestamp()),
+        user_id=user.id,
+        tenant_id=user.tenant_id,
+        roles=user.roles,
+        modules=user.modules,
+    )
 
 
 def verify_access_token(token: str, settings: CoreFlowSettings) -> AuthSession | None:
     if token == settings.api_token:
-        return issue_access_token(settings, settings.admin_username)
-    padded_token = token + '=' * (-len(token) % 4)
-    try:
-        decoded = base64.urlsafe_b64decode(padded_token.encode('utf-8')).decode('utf-8')
-        username, expires_at_raw, signature = decoded.split(':', 2)
-        expires_at_epoch = int(expires_at_raw)
-    except Exception:
+        return build_auth_session(
+            username=settings.admin_username,
+            access_token=token,
+            expires_at_epoch=int(time.time()) + settings.auth_token_ttl_seconds,
+            roles=['admin'],
+            modules=['products', 'crm', 'sales', 'finance'],
+        )
+    principal = decode_jwt(token, settings)
+    if principal is None:
         return None
-    expected_payload = f'{username}:{expires_at_epoch}'
-    expected_signature = hmac.new(settings.auth_secret.encode('utf-8'), expected_payload.encode('utf-8'), hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(signature, expected_signature):
-        return None
-    if expires_at_epoch < int(time.time()):
-        return None
-    return build_auth_session(username, token, expires_at_epoch)
+    return build_auth_session(
+        username=principal.email or principal.name or principal.user_id,
+        access_token=token,
+        expires_at_epoch=int(principal.exp.timestamp()),
+        user_id=principal.user_id,
+        tenant_id=principal.tenant_id,
+        roles=principal.roles,
+        modules=principal.modules,
+    )
 
 
 async def require_api_token(
+    request: Request,
     authorization: str | None = Header(default=None),
     settings: CoreFlowSettings = Depends(get_settings),
 ) -> str:
@@ -145,6 +187,10 @@ async def require_api_token(
     if authorization is None or not authorization.startswith('Bearer '):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Missing or invalid bearer token.')
     token = authorization.removeprefix('Bearer ').strip()
+    principal = decode_jwt(token, settings)
+    if principal is not None:
+        request.state.auth_principal = principal
+        return principal.email or principal.name or principal.user_id
     session = verify_access_token(token, settings)
     if session is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Missing or invalid bearer token.')
@@ -239,6 +285,15 @@ async def request_logging_middleware(request: Request, call_next):
     return response
 
 
+@app.middleware('http')
+async def auth_context_middleware(request: Request, call_next):
+    request.state.auth_principal = None
+    authorization = request.headers.get('authorization')
+    if authorization and authorization.startswith('Bearer '):
+        request.state.auth_principal = decode_jwt(authorization.removeprefix('Bearer ').strip(), get_settings())
+    return await call_next(request)
+
+
 @app.exception_handler(ValueError)
 async def value_error_handler(request: Request, exc: ValueError):
     request_id = getattr(request.state, 'request_id', str(uuid4()))
@@ -260,7 +315,8 @@ async def breaker_error_handler(request: Request, exc: CircuitBreakerOpenError):
     return JSONResponse(status_code=503, content={'detail': str(exc), 'request_id': request_id})
 
 
-app.include_router(build_control_plane_router(get_control_plane_repository, get_dispatcher, get_settings, require_api_token, issue_access_token, verify_access_token))
+app.include_router(build_iam_router(get_iam_repository, get_settings))
+app.include_router(build_control_plane_router(get_control_plane_repository, get_dispatcher, get_iam_repository, get_settings, require_api_token, issue_access_token, verify_access_token))
 
 _admin_ui_path = Path(__file__).resolve().parents[1] / 'control_plane_ui'
 if _admin_ui_path.exists():
@@ -276,16 +332,19 @@ async def healthcheck() -> dict[str, str]:
 async def readiness(settings: CoreFlowSettings = Depends(get_settings)) -> dict:
     repository = get_repository()
     control_plane_repository = get_control_plane_repository()
+    iam_repository = get_iam_repository()
     dispatcher = get_dispatcher()
     await asyncio.to_thread(repository.ensure_schema)
     db_ok = await asyncio.to_thread(repository.healthcheck)
     control_plane_ok = await asyncio.to_thread(control_plane_repository.healthcheck)
+    iam_ok = await asyncio.to_thread(iam_repository.healthcheck)
     queue_ok = dispatcher.healthcheck() if isinstance(dispatcher, InMemoryExecutionDispatcher) else await asyncio.to_thread(dispatcher.healthcheck)
-    overall = 'ok' if db_ok and queue_ok and control_plane_ok else 'degraded'
+    overall = 'ok' if db_ok and queue_ok and control_plane_ok and iam_ok else 'degraded'
     return {
         'status': overall,
         'database': 'ok' if db_ok else 'unavailable',
         'control_plane': 'ok' if control_plane_ok else 'unavailable',
+        'iam': 'ok' if iam_ok else 'unavailable',
         'queue': 'ok' if queue_ok else 'unavailable',
         'dispatcher': dispatcher.snapshot(),
         'auth_enforced': settings.enforce_auth,
@@ -354,3 +413,6 @@ async def get_execution_status(correlation_id: str, _: str = Depends(require_api
     if local_status is not None:
         return ExecutionStatusResponse(correlation_id=correlation_id, status=local_status)
     raise HTTPException(status_code=404, detail='Execution not found.')
+
+
+

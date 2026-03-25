@@ -1,0 +1,193 @@
+{
+  "run_id": "20260325T111721Z",
+  "auth_base_url": "http://127.0.0.1:8100",
+  "product_base_url": "http://127.0.0.1:3000",
+  "generated_at": "2026-03-25T11:17:24.235570+00:00",
+  "results": [
+    {
+      "name": "auth_login_and_jwt",
+      "expected": "200 with valid JWT claims",
+      "actual_status": 200,
+      "passed": true,
+      "details": {
+        "user_id": "49f71e75-1e5c-4c33-a614-c0d17a7cb962",
+        "tenant_id": "8f76b3c0-26f7-49cf-8fac-defb029bc8d7",
+        "modules": [
+          "products"
+        ],
+        "response_body": {
+          "authenticated": true,
+          "principal": {
+            "user_id": "49f71e75-1e5c-4c33-a614-c0d17a7cb962",
+            "tenant_id": "8f76b3c0-26f7-49cf-8fac-defb029bc8d7",
+            "email": "user-a-55cfd0@integration.test",
+            "name": "User Tenant A",
+            "roles": [
+              "user"
+            ],
+            "modules": [
+              "products"
+            ],
+            "exp": "2026-03-25T19:17:23Z"
+          }
+        }
+      }
+    },
+    {
+      "name": "products_access_allowed",
+      "expected": "2xx success for products-enabled user",
+      "actual_status": 201,
+      "passed": true,
+      "details": {
+        "response_body": {
+          "id": "40fb07e6-e85e-4bf0-a4e1-0172a08ed321",
+          "tenantId": "8f76b3c0-26f7-49cf-8fac-defb029bc8d7",
+          "name": "Integration Product allowed 69e72958",
+          "description": "Automated integration validation payload",
+          "type": "PRODUCT",
+          "status": "ACTIVE",
+          "createdAt": "2026-03-25T11:17:23.595Z",
+          "updatedAt": "2026-03-25T11:17:23.595Z",
+          "prices": [
+            {
+              "id": "90a75f3f-2d4a-4d16-a3a8-e9f154d950ec",
+              "price": 199.9,
+              "currency": "BRL",
+              "pricingTable": "padrao"
+            }
+          ],
+          "stocks": [
+            {
+              "id": "813bc505-aaf9-467e-97b6-4d0d00db7507",
+              "quantity": 3,
+              "location": "QA-CD"
+            }
+          ],
+          "variants": [
+            {
+              "id": "01e61955-765e-42a2-b726-8c28567f3d68",
+              "name": "default",
+              "attributes": {
+                "suite": "integration"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "products_access_denied_after_module_removal",
+      "expected": "403 forbidden after removing products module",
+      "actual_status": 403,
+      "passed": true,
+      "details": {
+        "response_body": {
+          "message": "Module access denied: products.",
+          "error": "Forbidden",
+          "statusCode": 403
+        }
+      }
+    },
+    {
+      "name": "tenant_isolation",
+      "expected": "403/404 when Tenant A accesses Tenant B data",
+      "actual_status": 403,
+      "passed": true,
+      "details": {
+        "product_id": "7f4490f4-1a82-466c-b86c-2253a68448d4",
+        "response_body": {
+          "message": "Tenant scope mismatch.",
+          "error": "Forbidden",
+          "statusCode": 403
+        }
+      }
+    },
+    {
+      "name": "user_update_flow_new_jwt",
+      "expected": "2xx after reissuing JWT with restored products module",
+      "actual_status": 201,
+      "passed": true,
+      "details": {
+        "response_body": {
+          "id": "e96a567e-da92-4a1e-84cd-8545255da836",
+          "tenantId": "8f76b3c0-26f7-49cf-8fac-defb029bc8d7",
+          "name": "Integration Product refreshed b369e228",
+          "description": "Automated integration validation payload",
+          "type": "PRODUCT",
+          "status": "ACTIVE",
+          "createdAt": "2026-03-25T11:17:24.221Z",
+          "updatedAt": "2026-03-25T11:17:24.221Z",
+          "prices": [
+            {
+              "id": "1c3e9f11-b8e3-4e0a-9d17-4182c4de2965",
+              "price": 199.9,
+              "currency": "BRL",
+              "pricingTable": "padrao"
+            }
+          ],
+          "stocks": [
+            {
+              "id": "c8bd4c32-93d9-41f1-aa24-0df74bfe3d78",
+              "quantity": 3,
+              "location": "QA-CD"
+            }
+          ],
+          "variants": [
+            {
+              "id": "8e2ec922-dd81-4272-93f5-5f7b47dae6c4",
+              "name": "default",
+              "attributes": {
+                "suite": "integration"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "security_invalid_token",
+      "expected": "401 unauthorized for invalid token",
+      "actual_status": 401,
+      "passed": true,
+      "details": {
+        "response_body": {
+          "message": "JWT is malformed.",
+          "error": "Unauthorized",
+          "statusCode": 401
+        }
+      }
+    },
+    {
+      "name": "security_expired_token",
+      "expected": "401 unauthorized for expired token",
+      "actual_status": 401,
+      "passed": true,
+      "details": {
+        "response_body": {
+          "message": "JWT is expired.",
+          "error": "Unauthorized",
+          "statusCode": 401
+        }
+      }
+    },
+    {
+      "name": "security_missing_token",
+      "expected": "401 unauthorized for missing token",
+      "actual_status": 401,
+      "passed": true,
+      "details": {
+        "response_body": {
+          "message": "Missing bearer token.",
+          "error": "Unauthorized",
+          "statusCode": 401
+        }
+      }
+    }
+  ],
+  "vulnerabilities": [],
+  "summary": {
+    "total": 8,
+    "passed": 8,
+    "failed": 0
+  }
+}

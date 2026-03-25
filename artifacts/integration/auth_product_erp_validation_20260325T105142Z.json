@@ -1,0 +1,344 @@
+{
+  "run_id": "20260325T105142Z",
+  "auth_base_url": "http://127.0.0.1:8100",
+  "product_base_url": "http://127.0.0.1:3000",
+  "generated_at": "2026-03-25T10:51:44.802445+00:00",
+  "results": [
+    {
+      "name": "auth_login_and_jwt",
+      "expected": "200 with valid JWT claims",
+      "actual_status": 200,
+      "passed": true,
+      "details": {
+        "user_id": "02d5d963-076d-4771-8a56-a8ca9f909199",
+        "tenant_id": "7f755ec6-5870-45e3-94e6-c0dde3579012",
+        "modules": [
+          "products"
+        ],
+        "response_body": {
+          "authenticated": true,
+          "principal": {
+            "user_id": "02d5d963-076d-4771-8a56-a8ca9f909199",
+            "tenant_id": "7f755ec6-5870-45e3-94e6-c0dde3579012",
+            "email": "user-a-296856@integration.test",
+            "name": "User Tenant A",
+            "roles": [
+              "user"
+            ],
+            "modules": [
+              "products"
+            ],
+            "exp": "2026-03-25T18:51:43Z"
+          }
+        }
+      }
+    },
+    {
+      "name": "products_access_allowed",
+      "expected": "2xx success for products-enabled user",
+      "actual_status": 201,
+      "passed": true,
+      "details": {
+        "response_body": {
+          "id": "80beebce-74fb-4d94-ada9-2b5797880c8a",
+          "tenantId": "7f755ec6-5870-45e3-94e6-c0dde3579012",
+          "name": "Integration Product allowed 1b5944bb",
+          "description": "Automated integration validation payload",
+          "type": "PRODUCT",
+          "status": "ACTIVE",
+          "createdAt": "2026-03-25T10:51:44.154Z",
+          "updatedAt": "2026-03-25T10:51:44.154Z",
+          "prices": [
+            {
+              "id": "e6c89601-9c55-41c5-b374-decbde75e46c",
+              "price": 199.9,
+              "currency": "BRL",
+              "pricingTable": "padrao"
+            }
+          ],
+          "stocks": [
+            {
+              "id": "d8429387-83e2-4e56-9b3a-a296891b88b8",
+              "quantity": 3,
+              "location": "QA-CD"
+            }
+          ],
+          "variants": [
+            {
+              "id": "8bee0ba5-1571-4b1b-8a47-4c833cb1a2fd",
+              "name": "default",
+              "attributes": {
+                "suite": "integration"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "products_access_denied_after_module_removal",
+      "expected": "403 forbidden after removing products module",
+      "actual_status": 201,
+      "passed": false,
+      "details": {
+        "response_body": {
+          "id": "6d515fab-3ea4-423f-9b0a-d2d704baca08",
+          "tenantId": "7f755ec6-5870-45e3-94e6-c0dde3579012",
+          "name": "Integration Product denied fe7198c7",
+          "description": "Automated integration validation payload",
+          "type": "PRODUCT",
+          "status": "ACTIVE",
+          "createdAt": "2026-03-25T10:51:44.465Z",
+          "updatedAt": "2026-03-25T10:51:44.465Z",
+          "prices": [
+            {
+              "id": "3e05517a-3603-4cf4-84f0-b6158ef05241",
+              "price": 199.9,
+              "currency": "BRL",
+              "pricingTable": "padrao"
+            }
+          ],
+          "stocks": [
+            {
+              "id": "9c720d36-19fc-45d4-a05e-048c74b6fb43",
+              "quantity": 3,
+              "location": "QA-CD"
+            }
+          ],
+          "variants": [
+            {
+              "id": "696f1280-58a3-4d14-8086-5c1f5e3bc575",
+              "name": "default",
+              "attributes": {
+                "suite": "integration"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "tenant_isolation",
+      "expected": "403/404 when Tenant A accesses Tenant B data",
+      "actual_status": 200,
+      "passed": false,
+      "details": {
+        "product_id": "1251bce9-0cce-4dda-b92b-c613f4ba2d17",
+        "response_body": {
+          "id": "1251bce9-0cce-4dda-b92b-c613f4ba2d17",
+          "tenantId": "d3ca8acc-cd21-4569-8a62-c6254cfd32fd",
+          "name": "Integration Product tenant-b 6c7fc2f7",
+          "description": "Automated integration validation payload",
+          "type": "PRODUCT",
+          "status": "ACTIVE",
+          "createdAt": "2026-03-25T10:51:44.472Z",
+          "updatedAt": "2026-03-25T10:51:44.472Z",
+          "prices": [
+            {
+              "id": "7ceaaf36-8b80-4590-90ad-af368ca204cd",
+              "price": 199.9,
+              "currency": "BRL",
+              "pricingTable": "padrao"
+            }
+          ],
+          "stocks": [
+            {
+              "id": "c5871821-e358-4b94-8da9-70fb48cd91a4",
+              "quantity": 3,
+              "location": "QA-CD"
+            }
+          ],
+          "variants": [
+            {
+              "id": "3464c325-8527-4138-99eb-f016f2891b06",
+              "name": "default",
+              "attributes": {
+                "suite": "integration"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "user_update_flow_new_jwt",
+      "expected": "2xx after reissuing JWT with restored products module",
+      "actual_status": 201,
+      "passed": true,
+      "details": {
+        "response_body": {
+          "id": "aeefd1cc-ff8d-4c3b-827b-5fbf15520abb",
+          "tenantId": "7f755ec6-5870-45e3-94e6-c0dde3579012",
+          "name": "Integration Product refreshed 08f8e459",
+          "description": "Automated integration validation payload",
+          "type": "PRODUCT",
+          "status": "ACTIVE",
+          "createdAt": "2026-03-25T10:51:44.779Z",
+          "updatedAt": "2026-03-25T10:51:44.779Z",
+          "prices": [
+            {
+              "id": "59e4444d-08a7-4193-a216-4d6090fd1d8c",
+              "price": 199.9,
+              "currency": "BRL",
+              "pricingTable": "padrao"
+            }
+          ],
+          "stocks": [
+            {
+              "id": "0b90f100-d329-487a-9a85-8a10543ea087",
+              "quantity": 3,
+              "location": "QA-CD"
+            }
+          ],
+          "variants": [
+            {
+              "id": "719dcd7e-a5af-44ae-96ac-9c5652d5585c",
+              "name": "default",
+              "attributes": {
+                "suite": "integration"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "security_invalid_token",
+      "expected": "401 unauthorized for invalid token",
+      "actual_status": 201,
+      "passed": false,
+      "details": {
+        "response_body": {
+          "id": "c343a4fa-c866-4d9e-85e5-4f73da505baa",
+          "tenantId": "7f755ec6-5870-45e3-94e6-c0dde3579012",
+          "name": "Integration Product invalid-token 2f3cba42",
+          "description": "Automated integration validation payload",
+          "type": "PRODUCT",
+          "status": "ACTIVE",
+          "createdAt": "2026-03-25T10:51:44.786Z",
+          "updatedAt": "2026-03-25T10:51:44.786Z",
+          "prices": [
+            {
+              "id": "f67b61f8-abfc-4b62-a72c-d79c828e3b05",
+              "price": 199.9,
+              "currency": "BRL",
+              "pricingTable": "padrao"
+            }
+          ],
+          "stocks": [
+            {
+              "id": "bc29278b-7027-43f2-b199-499c111b1e11",
+              "quantity": 3,
+              "location": "QA-CD"
+            }
+          ],
+          "variants": [
+            {
+              "id": "b2f6cdfc-990c-4c37-bfb4-7316b6cab540",
+              "name": "default",
+              "attributes": {
+                "suite": "integration"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "security_expired_token",
+      "expected": "401 unauthorized for expired token",
+      "actual_status": 201,
+      "passed": false,
+      "details": {
+        "response_body": {
+          "id": "13de806c-dcae-498a-b598-b4cd765807d3",
+          "tenantId": "7f755ec6-5870-45e3-94e6-c0dde3579012",
+          "name": "Integration Product expired-token fc8b0aeb",
+          "description": "Automated integration validation payload",
+          "type": "PRODUCT",
+          "status": "ACTIVE",
+          "createdAt": "2026-03-25T10:51:44.796Z",
+          "updatedAt": "2026-03-25T10:51:44.796Z",
+          "prices": [
+            {
+              "id": "8985d486-d5ad-4395-a67c-3d22406f755c",
+              "price": 199.9,
+              "currency": "BRL",
+              "pricingTable": "padrao"
+            }
+          ],
+          "stocks": [
+            {
+              "id": "16db8cb6-823d-474f-aed2-70f6ee93e28b",
+              "quantity": 3,
+              "location": "QA-CD"
+            }
+          ],
+          "variants": [
+            {
+              "id": "d7786897-a4a9-4e9c-8680-60c0b7712286",
+              "name": "default",
+              "attributes": {
+                "suite": "integration"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "security_missing_token",
+      "expected": "401 unauthorized for missing token",
+      "actual_status": 201,
+      "passed": false,
+      "details": {
+        "response_body": {
+          "id": "760186a3-41b2-46de-8be5-42014135d499",
+          "tenantId": "7f755ec6-5870-45e3-94e6-c0dde3579012",
+          "name": "Integration Product missing-token d73a097e",
+          "description": "Automated integration validation payload",
+          "type": "PRODUCT",
+          "status": "ACTIVE",
+          "createdAt": "2026-03-25T10:51:44.803Z",
+          "updatedAt": "2026-03-25T10:51:44.803Z",
+          "prices": [
+            {
+              "id": "68466ee4-6104-4fe6-88cc-8732b3f9ea0f",
+              "price": 199.9,
+              "currency": "BRL",
+              "pricingTable": "padrao"
+            }
+          ],
+          "stocks": [
+            {
+              "id": "d62226d6-5422-4bb9-a18d-3fb8632b26a7",
+              "quantity": 3,
+              "location": "QA-CD"
+            }
+          ],
+          "variants": [
+            {
+              "id": "eae6ad8c-7644-4d0e-884c-d4b4635cb24b",
+              "name": "default",
+              "attributes": {
+                "suite": "integration"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "vulnerabilities": [
+    "Tenant A can access Tenant B data by spoofing x-tenant-id; resource server ignores tenant claim in JWT.",
+    "product-erp accepts expired JWTs.",
+    "product-erp accepts invalid bearer tokens.",
+    "product-erp allows authenticated operations without any bearer token.",
+    "product-erp does not enforce module-based access from JWT claims."
+  ],
+  "summary": {
+    "total": 8,
+    "passed": 3,
+    "failed": 5
+  }
+}

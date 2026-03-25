@@ -1,0 +1,133 @@
+{
+  "run_id": "20260325T111531Z",
+  "auth_base_url": "http://127.0.0.1:8100",
+  "product_base_url": "http://127.0.0.1:3000",
+  "generated_at": "2026-03-25T11:15:34.380039+00:00",
+  "results": [
+    {
+      "name": "auth_login_and_jwt",
+      "expected": "200 with valid JWT claims",
+      "actual_status": 200,
+      "passed": true,
+      "details": {
+        "user_id": "3b4a2f5c-6978-4b82-add3-405c93664f00",
+        "tenant_id": "7bb9fb5d-be21-4ade-bc90-6e8bd50ae4e2",
+        "modules": [
+          "products"
+        ],
+        "response_body": {
+          "authenticated": true,
+          "principal": {
+            "user_id": "3b4a2f5c-6978-4b82-add3-405c93664f00",
+            "tenant_id": "7bb9fb5d-be21-4ade-bc90-6e8bd50ae4e2",
+            "email": "user-a-5f3a79@integration.test",
+            "name": "User Tenant A",
+            "roles": [
+              "user"
+            ],
+            "modules": [
+              "products"
+            ],
+            "exp": "2026-03-25T19:15:33Z"
+          }
+        }
+      }
+    },
+    {
+      "name": "products_access_allowed",
+      "expected": "2xx success for products-enabled user",
+      "actual_status": 401,
+      "passed": false,
+      "details": {
+        "response_body": {
+          "message": "JWT shared secret is not configured.",
+          "error": "Unauthorized",
+          "statusCode": 401
+        }
+      }
+    },
+    {
+      "name": "products_access_denied_after_module_removal",
+      "expected": "403 forbidden after removing products module",
+      "actual_status": 401,
+      "passed": false,
+      "details": {
+        "response_body": {
+          "message": "JWT shared secret is not configured.",
+          "error": "Unauthorized",
+          "statusCode": 401
+        }
+      }
+    },
+    {
+      "name": "tenant_isolation",
+      "expected": "403/404 when Tenant A accesses Tenant B data",
+      "actual_status": null,
+      "passed": false,
+      "details": {
+        "product_id": null,
+        "response_body": null
+      }
+    },
+    {
+      "name": "user_update_flow_new_jwt",
+      "expected": "2xx after reissuing JWT with restored products module",
+      "actual_status": 401,
+      "passed": false,
+      "details": {
+        "response_body": {
+          "message": "JWT shared secret is not configured.",
+          "error": "Unauthorized",
+          "statusCode": 401
+        }
+      }
+    },
+    {
+      "name": "security_invalid_token",
+      "expected": "401 unauthorized for invalid token",
+      "actual_status": 401,
+      "passed": true,
+      "details": {
+        "response_body": {
+          "message": "JWT is malformed.",
+          "error": "Unauthorized",
+          "statusCode": 401
+        }
+      }
+    },
+    {
+      "name": "security_expired_token",
+      "expected": "401 unauthorized for expired token",
+      "actual_status": 401,
+      "passed": true,
+      "details": {
+        "response_body": {
+          "message": "JWT shared secret is not configured.",
+          "error": "Unauthorized",
+          "statusCode": 401
+        }
+      }
+    },
+    {
+      "name": "security_missing_token",
+      "expected": "401 unauthorized for missing token",
+      "actual_status": 401,
+      "passed": true,
+      "details": {
+        "response_body": {
+          "message": "Missing bearer token.",
+          "error": "Unauthorized",
+          "statusCode": 401
+        }
+      }
+    }
+  ],
+  "vulnerabilities": [
+    "product-erp does not enforce module-based access from JWT claims."
+  ],
+  "summary": {
+    "total": 8,
+    "passed": 4,
+    "failed": 4
+  }
+}
